@@ -1,42 +1,48 @@
 {
-  "name": "expo-mapbox-navigation",
-  "version": "0.1.0",
-  "description": "My new module",
-  "main": "build/index.js",
-  "types": "build/index.d.ts",
-  "scripts": {
-    "build": "expo-module build",
-    "clean": "expo-module clean",
-    "lint": "expo-module lint",
-    "test": "expo-module test",
-    "prepare": "expo-module prepare",
-    "prepublishOnly": "expo-module prepublishOnly",
-    "expo-module": "expo-module",
-    "open:ios": "xed example/ios",
-    "open:android": "open -a \"Android Studio\" example/android"
-  },
-  "keywords": [
-    "react-native",
-    "expo",
-    "expo-mapbox-navigation",
-    "ExpoMapboxNavigation"
-  ],
-  "repository": "https://github.com/redafahti/expo-mapbox-navigation",
-  "bugs": {
-    "url": "https://github.com/redafahti/expo-mapbox-navigation/issues"
-  },
-  "author": "r.fathi <fathiredaallah@gmail.com> (https://github.com/redafahti)",
-  "license": "MIT",
-  "homepage": "https://github.com/redafahti/expo-mapbox-navigation#readme",
-  "dependencies": {},
-  "devDependencies": {
-    "@types/react": "^18.0.25",
-    "expo-module-scripts": "^3.5.2",
-    "expo-modules-core": "^1.12.20"
-  },
-  "peerDependencies": {
-    "expo": "*",
-    "react": "*",
-    "react-native": "*"
-  }
+    "name": "@r.fathi/expo-mapboxnavigation",
+    "version": "0.1.0",
+    "description": "My new module",
+    "main": "build/index.js",
+    "types": "build/index.d.ts",
+    "scripts": {
+        "build": "expo-module build",
+        "clean": "expo-module clean",
+        "lint": "expo-module lint",
+        "test": "expo-module test",
+        "prepare": "expo-module prepare",
+        "prepublishOnly": "expo-module prepublishOnly",
+        "expo-module": "expo-module",
+        "open:ios": "xed example/ios",
+        "open:android": "open -a \"Android Studio\" example/android"
+    },
+    "keywords": [
+        "react-native",
+        "expo",
+        "expo-mapbox-navigation",
+        "ExpoMapboxNavigation"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/redafahti/expo-mapbox-navigation.git"
+    },
+    "author": "r.fathi <fathiredaallah@gmail.com> (https://github.com/redafahti)",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/redafahti/expo-mapbox-navigation/issues"
+    },
+    "homepage": "https://github.com/redafahti/expo-mapbox-navigation#readme",
+    "publishConfig": {
+        "registry": "https://registry.npmjs.org/"
+    },
+    "dependencies": {},
+    "devDependencies": {
+        "@types/react": "^18.0.25",
+        "expo-module-scripts": "^3.5.2",
+        "expo-modules-core": "^1.12.20"
+    },
+    "peerDependencies": {
+        "expo": "*",
+        "react": "*",
+        "react-native": "*"
+    }
 }

@@ -112,6 +112,8 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
     private val onFinalDestinationArrival by EventDispatcher()
     private val onRouteChanged by EventDispatcher()
     private val onUserOffRoute by EventDispatcher()
+    private val onLocationChange by EventDispatcher()
+    private val onRouteReady by EventDispatcher()
 
     private val mapboxNavigation = MapboxNavigationApp.current()
     private var mapboxStyle: Style? = null
@@ -357,6 +359,15 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
             // Update viewport data source
             viewportDataSource.onLocationChanged(enhancedLocation)
             viewportDataSource.evaluate()
+
+            val driverLocation = mutableMapOf<String, Double>()
+            driverLocation["longitude"] = enhancedLocation.longitude
+            driverLocation["latitude"] = enhancedLocation.latitude
+
+            // Send onLocationChange event
+            this@ExpoMapboxNavigationView.onLocationChange(mapOf(
+                "driverLocation" to driverLocation,
+            ))
         }
         override fun onNewRawLocation(rawLocation: com.mapbox.common.location.Location) {}
     }
@@ -612,6 +623,12 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
                 .maxDuration(0) // instant transition
                 .build()
         )
+        val gson = Gson()
+        val routeJson = gson.toJson(routes[0])
+        this@ExpoMapboxNavigationView.onRouteReady(mapOf(
+            "route" to routeJson
+        ))
+
     }
 
     @com.mapbox.navigation.base.ExperimentalPreviewMapboxNavigationAPI 

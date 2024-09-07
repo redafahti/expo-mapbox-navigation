@@ -38,7 +38,15 @@ export default function App() {
           onRouteProgressChanged={(event: any) => {
             //console.log(event.nativeEvent);
           }}
+          onLocationChange={(event: any) => {
+            //console.log(event.nativeEvent);
+          }}
           onRouteChanged={(event: any) => {
+            const route = JSON.parse(event.nativeEvent.route);
+            const directionsRoute = route.directionsRoute;
+            //console.log(directionsRoute);
+          }}
+          onRouteReady={(event: any) => {
             const route = JSON.parse(event.nativeEvent.route);
             const directionsRoute = route.directionsRoute;
             console.log(directionsRoute);
