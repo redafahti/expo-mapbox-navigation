@@ -2,46 +2,63 @@ package expo.modules.mapboxnavigation
 
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import com.mapbox.navigation.base.options.NavigationOptions
+import com.mapbox.navigation.core.lifecycle.MapboxNavigationApp
+import com.mapbox.geojson.Point
+import androidx.lifecycle.LifecycleOwner
+import expo.modules.kotlin.jni.JavaScriptValue
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
 
 class ExpoMapboxNavigationModule : Module() {
-  // Each module class must implement the definition function. The definition consists of components
-  // that describes the module's functionality and behavior.
-  // See https://docs.expo.dev/modules/module-api for more details about available components.
+  private val activity
+    get() = requireNotNull(appContext.activityProvider?.currentActivity)
+
+
+  @com.mapbox.navigation.base.ExperimentalPreviewMapboxNavigationAPI
   override fun definition() = ModuleDefinition {
-    // Sets the name of the module that JavaScript code will use to refer to the module. Takes a string as an argument.
-    // Can be inferred from module's class name, but it's recommended to set it explicitly for clarity.
-    // The module will be accessible from `requireNativeModule('ExpoMapboxNavigation')` in JavaScript.
+
     Name("ExpoMapboxNavigation")
 
-    // Sets constant properties on the module. Can take a dictionary or a closure that returns a dictionary.
-    Constants(
-      "PI" to Math.PI
-    )
-
-    // Defines event names that the module can send to JavaScript.
-    Events("onChange")
-
-    // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
-    Function("hello") {
-      "Hello world! 👋"
-    }
-
-    // Defines a JavaScript function that always returns a Promise and whose native code
-    // is by default dispatched on the different thread than the JavaScript runtime runs on.
-    AsyncFunction("setValueAsync") { value: String ->
-      // Send an event to JavaScript.
-      sendEvent("onChange", mapOf(
-        "value" to value
-      ))
-    }
-
-    // Enables the module to be used as a native view. Definition components that are accepted as part of
-    // the view definition: Prop, Events.
-    View(ExpoMapboxNavigationView::class) {
-      // Defines a setter for the `name` prop.
-      Prop("name") { view: ExpoMapboxNavigationView, prop: String ->
-        println(prop)
+    OnActivityEntersForeground {
+      (activity as LifecycleOwner).lifecycleScope.launch(Dispatchers.Main){
+        if (!MapboxNavigationApp.isSetup()) {
+              MapboxNavigationApp.setup {
+                NavigationOptions.Builder(activity.applicationContext).build()
+              } 
+        }
+        MapboxNavigationApp.attach(activity as LifecycleOwner)
       }
+    }
+
+    OnActivityEntersBackground {
+      (activity as LifecycleOwner).lifecycleScope.launch(Dispatchers.Main){
+        MapboxNavigationApp.detach(activity as LifecycleOwner)
+      }
+    }
+
+    View(ExpoMapboxNavigationView::class) {
+
+        Events("onRouteProgressChanged", "onCancelNavigation", "onWaypointArrival", "onFinalDestinationArrival", "onRouteChanged", "onUserOffRoute", "onRouteReady")
+
+        Prop("coordinates") { view: ExpoMapboxNavigationView, coordinates: List<Map<String, Any>> ->
+            val points = mutableListOf<Point>()
+            for (coordinate in coordinates) {
+                val longValue = coordinate.get("longitude")
+                val latValue = coordinate.get("latitude")
+                if(longValue is Double && latValue is Double){
+                    points.add(Point.fromLngLat(longValue, latValue))
+                }
+                
+            }
+            view.setCoordinates(points)
+        }
+        
+        Prop("locale") { view: ExpoMapboxNavigationView, localeStr: String? ->
+            view.setLocale(localeStr)
+        }
     }
   }
 }
