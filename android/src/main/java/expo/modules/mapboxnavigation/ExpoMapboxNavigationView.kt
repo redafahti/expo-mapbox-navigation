@@ -7,10 +7,12 @@ import android.graphics.Color
 import android.util.Log
 import android.view.Gravity
 import android.view.View;
+import android.graphics.drawable.GradientDrawable
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView;
+import androidx.cardview.widget.CardView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
 import com.mapbox.api.directions.v5.models.DirectionsRoute
@@ -29,6 +31,11 @@ import com.mapbox.maps.plugin.locationcomponent.location
 import com.mapbox.maps.plugin.locationcomponent.OnIndicatorPositionChangedListener
 import com.mapbox.maps.plugin.LocationPuck2D
 import com.mapbox.maps.Style
+import com.mapbox.maps.plugin.compass.compass
+import com.mapbox.maps.plugin.scalebar.scalebar
+import com.mapbox.maps.plugin.gestures.*
+import com.mapbox.maps.plugin.attribution.*
+import com.mapbox.maps.plugin.logo.*
 import com.mapbox.navigation.base.extensions.applyDefaultNavigationOptions
 import com.mapbox.navigation.base.formatter.DistanceFormatterOptions
 import com.mapbox.navigation.base.route.NavigationRoute
@@ -104,7 +111,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
     private var isUsingRouteMatchingApi = false
     private var currentRouteProfile: String? = null
     private var currentRouteExcludeList: List<String>? = null
-    private var currentMapStyle: String? = null
+    private var currentMapStyle: String? = "mapbox://styles/redafa/clxm5vwgx00h701pd1uvublem"
 
     private val onRouteProgressChanged by EventDispatcher()
     private val onCancelNavigation by EventDispatcher()
@@ -187,7 +194,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
     private val routeLineApi = MapboxRouteLineApi(routeLineApiOptions)
 
     private val routeLineViewOptions = MapboxRouteLineViewOptions.Builder(context)
-        .routeLineBelowLayerId("road-label")
+        .routeLineBelowLayerId("road-label-navigation")
         .build()
     private val routeLineView = MapboxRouteLineView(routeLineViewOptions)
 
@@ -400,19 +407,19 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         mapboxStyle?.let { routeLineView.renderRouteLineUpdate(it, result) }
     }
 
-
     private fun createMapView(id: Int, parent: ViewGroup): MapView {
         return MapView(context).apply {
             setId(id)
             parent.addView(this)
 
-            mapboxMap.loadStyle(Style.MAPBOX_STREETS) { style: Style ->
+            mapboxMap.loadStyleUri("mapbox://styles/redafa/clxm5vwgx00h701pd1uvublem") { style: Style ->
                 mapboxStyle = style
+                routeLineView.initializeLayers(style)
             }
 
             location.apply {
                 locationPuck = LocationPuck2D(
-                    bearingImage = ImageHolder.from(com.mapbox.navigation.ui.components.R.drawable.mapbox_navigation_puck_icon),
+                    bearingImage = ImageHolder.from(R.drawable.mapbox_navigation_puck_icon),
                 )
                 setLocationProvider(navigationLocationProvider)
                 puckBearingEnabled = true
@@ -425,6 +432,11 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         return MapboxManeuverView(context).apply {
             setId(id)
             parent.addView(this)
+
+            val backgroundColor = Color.parseColor("#FF5733") // Replace with your hex color code
+
+            // Set the background of the ManeuverView
+            setBackgroundColor(Color.WHITE)
 
             val maneuverViewOptions = ManeuverViewOptions.Builder()
                 .primaryManeuverOptions(
@@ -578,6 +590,14 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
 
         return MapboxNavigationViewportDataSource(mapboxMap).apply {
             options.followingFrameOptions.focalPoint = FocalPoint(0.5, 0.9)
+            options.followingFrameOptions.centerUpdatesAllowed= true
+            options.followingFrameOptions.bearingUpdatesAllowed = true
+            options.followingFrameOptions.bearingSmoothing.enabled = true
+            options.followingFrameOptions.defaultPitch = 45.0
+            options.followingFrameOptions.maxZoom = 17.0
+            options.followingFrameOptions.minZoom = 14.0
+            options.followingFrameOptions.pitchUpdatesAllowed = true
+            options.followingFrameOptions.zoomUpdatesAllowed = true
             if (context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
                 followingPadding = landscapeFollowingPadding
                 overviewPadding = landscapeOverviewPadding
@@ -597,6 +617,14 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         mapboxNavigation?.registerArrivalObserver(arrivalObserver)
         mapboxNavigation?.registerOffRouteObserver(offRouteObserver)
         mapView.location.addOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener)
+        mapView.logo.updateSettings {
+            enabled = false
+        }
+        mapView.attribution.updateSettings {
+            enabled = false
+        }
+        mapView.compass.enabled = false
+        mapView.scalebar.enabled = false
     }
 
     override fun onDetachedFromWindow() {
