@@ -18,16 +18,18 @@ export default function App() {
 
   const UpdateRoute = () => {
     setCoordinates([
-      { latitude: 33.554487, longitude: -7.528364 },
-      { latitude: 33.595095, longitude: -7.594907 },
+      { latitude: 33.5873, longitude: -7.5902 },
+      { latitude: 33.5957, longitude: -7.56383 },
+      { latitude: 33.5985, longitude: -7.54626 },
     ]);
   };
 
   const [locationAllowed, setLocationAllowed] = React.useState(false);
   const [coordinates, setCoordinates] = React.useState([
-    { latitude: 33.554487, longitude: -7.528364 },
-    { latitude: 33.569632, longitude: -7.5742 },
-    { latitude: 33.595095, longitude: -7.594907 },
+    { latitude: 33.5873, longitude: -7.5902 },
+    { latitude: 33.5939, longitude: -7.58189 },
+    { latitude: 33.5957, longitude: -7.56383 },
+    { latitude: 33.5985, longitude: -7.54626 },
   ]);
   return (
     <View style={styles.container}>
@@ -44,16 +46,15 @@ export default function App() {
           onRouteChanged={(event: any) => {
             const route = JSON.parse(event.nativeEvent.route);
             const directionsRoute = route.directionsRoute;
-            console.log("onRouteChanged", directionsRoute);
           }}
           onRouteReady={(event: any) => {
             const route = JSON.parse(event.nativeEvent.route);
             const directionsRoute = route.directionsRoute;
-            console.log("onRouteReady", directionsRoute);
+            console.log("onRouteReady");
           }}
           onUserOffRoute={(event: any) => {
             console.log(event.nativeEvent);
-            UpdateRoute();
+            //UpdateRoute();
           }}
         />
       ) : (
