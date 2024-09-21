@@ -8,7 +8,7 @@ type ProgressEvent = {
 };
 
 export type ExpoMapboxNavigationViewProps = {
-  coordinates: Array<{ latitude: number; longitude: number }>;
+  coordinates: { latitude: number; longitude: number }[];
   locale?: string;
   onRouteProgressChanged?: (event: { nativeEvent: ProgressEvent }) => void;
   onCancelNavigation?: () => void;
@@ -17,7 +17,7 @@ export type ExpoMapboxNavigationViewProps = {
   }) => void;
   onFinalDestinationArrival?: () => void;
   onRouteChanged?: (event: { nativeEvent: any }) => void;
-  onUserOffRoute?: () => void;
+  onUserOffRoute?: (event: { nativeEvent: any }) => void;
   onLocationChange?: (event: { nativeEvent: any }) => void;
   onRouteReady?: (event: { nativeEvent: any }) => void;
   style?: StyleProp<ViewStyle>;

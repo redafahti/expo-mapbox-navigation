@@ -1,13 +1,13 @@
+import * as Location from "expo-location";
+import { ExpoMapboxNavigationView } from "expo-mapbox-navigation";
+import { StatusBar } from "expo-status-bar";
 import React from "react";
 import { StyleSheet, View, Text, TouchableOpacity } from "react-native";
-import { ExpoMapboxNavigationView } from "expo-mapbox-navigation";
-import * as Location from "expo-location";
-import { StatusBar } from "expo-status-bar";
 
 export default function App() {
   React.useEffect(() => {
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
         setLocationAllowed(true);
       } else {
@@ -44,12 +44,16 @@ export default function App() {
           onRouteChanged={(event: any) => {
             const route = JSON.parse(event.nativeEvent.route);
             const directionsRoute = route.directionsRoute;
-            //console.log(directionsRoute);
+            console.log("onRouteChanged", directionsRoute);
           }}
           onRouteReady={(event: any) => {
             const route = JSON.parse(event.nativeEvent.route);
             const directionsRoute = route.directionsRoute;
-            console.log(directionsRoute);
+            console.log("onRouteReady", directionsRoute);
+          }}
+          onUserOffRoute={(event: any) => {
+            console.log(event.nativeEvent);
+            UpdateRoute();
           }}
         />
       ) : (

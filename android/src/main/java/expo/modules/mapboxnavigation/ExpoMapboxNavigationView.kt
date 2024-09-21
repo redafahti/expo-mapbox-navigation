@@ -397,7 +397,9 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
     private val offRouteObserver = object : OffRouteObserver {
         override fun onOffRouteStateChanged(offRoute: Boolean) {
             if(offRoute){
-                onUserOffRoute(mapOf())
+                onUserOffRoute(mapOf(
+                    "offRoute" to offRoute
+                ))
             }
         }
     }
@@ -432,12 +434,6 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         return MapboxManeuverView(context).apply {
             setId(id)
             parent.addView(this)
-
-            val backgroundColor = Color.parseColor("#FF5733") // Replace with your hex color code
-
-            // Set the background of the ManeuverView
-            setBackgroundColor(Color.WHITE)
-
             val maneuverViewOptions = ManeuverViewOptions.Builder()
                 .primaryManeuverOptions(
                     ManeuverPrimaryOptions.Builder()
@@ -616,6 +612,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         mapboxNavigation?.registerVoiceInstructionsObserver(voiceInstructionsObserver)
         mapboxNavigation?.registerArrivalObserver(arrivalObserver)
         mapboxNavigation?.registerOffRouteObserver(offRouteObserver)
+        mapboxNavigation?.setRerouteEnabled(false)
         mapView.location.addOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener)
         mapView.logo.updateSettings {
             enabled = false
@@ -625,6 +622,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         }
         mapView.compass.enabled = false
         mapView.scalebar.enabled = false
+        mapboxNavigation?.startTripSession()
     }
 
     override fun onDetachedFromWindow() {
@@ -635,6 +633,9 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         mapboxNavigation?.unregisterVoiceInstructionsObserver(voiceInstructionsObserver)
         mapboxNavigation?.unregisterArrivalObserver(arrivalObserver)
         mapboxNavigation?.unregisterOffRouteObserver(offRouteObserver)
+        if(mapboxNavigation?.isDestroyed != true){
+            mapboxNavigation?.stopTripSession()
+        }
         speechApi.cancel()
         voiceInstructionsPlayer.shutdown()
         mapView.location.removeOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener)
@@ -645,7 +646,6 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
 
     private fun onRoutesReady(routes: List<NavigationRoute>){
         mapboxNavigation?.setNavigationRoutes(routes)
-        mapboxNavigation?.startTripSession()
         navigationCamera.requestNavigationCameraToFollowing(
             stateTransitionOptions = NavigationCameraTransitionOptions.Builder()
                 .maxDuration(0) // instant transition
