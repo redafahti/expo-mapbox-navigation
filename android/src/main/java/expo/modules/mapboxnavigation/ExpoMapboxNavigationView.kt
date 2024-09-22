@@ -3,6 +3,7 @@ package expo.modules.mapboxnavigation
 import android.content.Context
 import android.content.res.Configuration
 import android.content.res.Resources
+import androidx.core.content.ContextCompat
 import android.graphics.Color
 import android.util.Log
 import android.view.Gravity
@@ -12,6 +13,12 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView;
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
+import android.os.Bundle
+import androidx.annotation.DrawableRes
 import androidx.cardview.widget.CardView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
@@ -36,6 +43,16 @@ import com.mapbox.maps.plugin.scalebar.scalebar
 import com.mapbox.maps.plugin.gestures.*
 import com.mapbox.maps.plugin.attribution.*
 import com.mapbox.maps.plugin.logo.*
+import com.mapbox.maps.extension.style.layers.addLayer
+import com.mapbox.maps.extension.style.layers.generated.SymbolLayer
+import com.mapbox.maps.extension.style.sources.addSource
+import com.mapbox.maps.extension.style.sources.generated.GeoJsonSource
+import com.mapbox.maps.plugin.annotation.annotations
+import com.mapbox.maps.plugin.annotation.generated.PointAnnotationOptions
+import com.mapbox.maps.plugin.annotation.generated.PointAnnotationManager
+import com.mapbox.maps.plugin.annotation.generated.createPointAnnotationManager
+import com.mapbox.maps.plugin.annotation.AnnotationConfig
+
 import com.mapbox.navigation.base.extensions.applyDefaultNavigationOptions
 import com.mapbox.navigation.base.formatter.DistanceFormatterOptions
 import com.mapbox.navigation.base.route.NavigationRoute
@@ -242,6 +259,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         )
     }
 
+    private var pointAnnotationManager: PointAnnotationManager? = null
 
     private val routesRequestCallback = object : NavigationRouterCallback {
         override fun onRoutesReady(routes: List<NavigationRoute>, @RouterOrigin routerOrigin: String) {
@@ -713,7 +731,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
             }
         } else {
             mapboxMap.getStyle { style: Style ->
-                style.localizeLabels(currentLocale)        
+                style.localizeLabels(currentLocale)  
             }
         }
 
@@ -742,8 +760,72 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
                 requestRoutes()
             }
         }
-        
+
+        addAnnotationToMap(currentCoordinates ?: emptyList())
     }
+
+    private fun addAnnotationToMap(coords: List<Point>) {
+        // Ensure there are enough coordinates to separate waypoints and destination
+        if (coords.isEmpty() || coords.size < 2) {
+            return
+        }
+        // Extract waypoints (removing index 0) and destination (last coordinate)
+        val waypoints = coords.subList(1, coords.size - 1)
+        val destination = coords.last()
+
+        // Initialize or reuse the PointAnnotationManager
+        if (pointAnnotationManager == null) {
+            val annotationConfig = AnnotationConfig()
+            val annotationApi = mapView.annotations
+            pointAnnotationManager = annotationApi?.createPointAnnotationManager(annotationConfig)
+        }
+
+        // Clear previous annotations
+        pointAnnotationManager?.deleteAll()
+
+        // Add destination annotation
+        destinationBitmapFromDrawableRes()?.let {
+            val pointAnnotationOptions: PointAnnotationOptions = PointAnnotationOptions()
+                .withPoint(destination)
+                .withIconImage(it)
+                .withIconSize(1.2)
+                .withIconOffset(listOf(8.0, 2.0))
+            pointAnnotationManager?.create(pointAnnotationOptions)
+        }
+
+        // Add waypoints annotations
+        stopsBitmapFromDrawableRes()?.let { bitmap ->
+            waypoints.forEach { waypoint ->
+                val pointAnnotationOptions = PointAnnotationOptions()
+                    .withPoint(waypoint)
+                    .withIconImage(bitmap)
+                    .withIconSize(1.2)
+                    .withIconOffset(listOf(8.0, 2.0))
+                pointAnnotationManager?.create(pointAnnotationOptions)
+            }
+        }
+    }
+
+    private fun destinationBitmapFromDrawableRes() = convertDrawableToBitmap(ContextCompat.getDrawable(context, R.drawable.destination_icon))
+    private fun stopsBitmapFromDrawableRes() = convertDrawableToBitmap(ContextCompat.getDrawable(context, R.drawable.waypoint_icon))
+
+    private fun convertDrawableToBitmap(sourceDrawable: Drawable?): Bitmap? {
+        if (sourceDrawable == null) {
+            return null
+        }
+        return if (sourceDrawable is BitmapDrawable) {
+            sourceDrawable.bitmap
+        } else {
+            val constantState = sourceDrawable.constantState ?: return null
+            val drawable = constantState.newDrawable().mutate()
+            val bitmap: Bitmap = Bitmap.createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            drawable.setBounds(0, 0, canvas.width, canvas.height)
+            drawable.draw(canvas)
+            bitmap
+        }
+    }
+
 
     private fun requestRoutes(){
         var optionsBuilder = RouteOptions.builder()
