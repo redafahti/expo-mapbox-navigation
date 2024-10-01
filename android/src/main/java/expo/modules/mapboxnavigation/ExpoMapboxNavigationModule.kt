@@ -13,13 +13,11 @@ import kotlinx.coroutines.launch
 
 
 class ExpoMapboxNavigationModule : Module() {
-  private val activity
-    get() = requireNotNull(appContext.activityProvider?.currentActivity)
 
+ private val activity get() = requireNotNull(appContext.activityProvider?.currentActivity)
 
   @com.mapbox.navigation.base.ExperimentalPreviewMapboxNavigationAPI
   override fun definition() = ModuleDefinition {
-
     Name("ExpoMapboxNavigation")
 
     OnActivityEntersForeground {
@@ -40,7 +38,6 @@ class ExpoMapboxNavigationModule : Module() {
     }
 
     View(ExpoMapboxNavigationView::class) {
-
         Events("onRouteProgressChanged", "onCancelNavigation", "onWaypointArrival", "onFinalDestinationArrival", "onRouteChanged", "onUserOffRoute", "onLocationChange", "onRouteReady")
 
         Prop("coordinates") { view: ExpoMapboxNavigationView, coordinates: List<Map<String, Any>> ->
@@ -60,5 +57,6 @@ class ExpoMapboxNavigationModule : Module() {
             view.setLocale(localeStr)
         }
     }
+
   }
 }

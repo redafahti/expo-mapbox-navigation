@@ -1,4 +1,4 @@
-import { ViewStyle, StyleProp } from "react-native/types";
+import { ViewStyle, StyleProp } from "react-native";
 
 type ProgressEvent = {
   distanceRemaining: number;

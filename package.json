@@ -1,6 +1,7 @@
 {
     "name": "@r.fathi/expo-mapboxnavigation",
-    "version": "0.1.6",
+    "version": "0.1.8",
+    "homepage": "https://github.com/redafahti/expo-mapbox-navigation",
     "description": "My new module",
     "main": "build/index.js",
     "types": "build/index.d.ts",
@@ -30,13 +31,15 @@
     "bugs": {
         "url": "https://github.com/redafahti/expo-mapbox-navigation/issues"
     },
-    "homepage": "https://github.com/redafahti/expo-mapbox-navigation#readme",
     "publishConfig": {
         "registry": "https://registry.npmjs.org/"
     },
-    "dependencies": {},
+    "dependencies": {
+        "react-native": "^0.75.3"
+    },
     "devDependencies": {
         "@types/react": "^18.0.25",
+        "@types/react-native": "^0.73.0",
         "expo-module-scripts": "^3.5.2",
         "expo-modules-core": "^1.12.20"
     },

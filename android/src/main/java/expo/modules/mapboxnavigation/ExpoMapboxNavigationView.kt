@@ -22,6 +22,8 @@ import androidx.annotation.DrawableRes
 import androidx.cardview.widget.CardView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
+import com.mapbox.api.directions.v5.DirectionsCriteria
+import com.mapbox.api.directions.v5.DirectionsCriteria.ProfileCriteria
 import com.mapbox.api.directions.v5.models.DirectionsRoute
 import com.mapbox.api.directions.v5.models.RouteOptions
 import com.mapbox.bindgen.Expected
@@ -52,7 +54,6 @@ import com.mapbox.maps.plugin.annotation.generated.PointAnnotationOptions
 import com.mapbox.maps.plugin.annotation.generated.PointAnnotationManager
 import com.mapbox.maps.plugin.annotation.generated.createPointAnnotationManager
 import com.mapbox.maps.plugin.annotation.AnnotationConfig
-
 import com.mapbox.navigation.base.extensions.applyDefaultNavigationOptions
 import com.mapbox.navigation.base.formatter.DistanceFormatterOptions
 import com.mapbox.navigation.base.route.NavigationRoute
@@ -82,6 +83,8 @@ import com.mapbox.navigation.tripdata.progress.model.EstimatedTimeToArrivalForma
 import com.mapbox.navigation.tripdata.progress.model.TimeRemainingFormatter
 import com.mapbox.navigation.tripdata.progress.model.TripProgressUpdateFormatter
 import com.mapbox.navigation.tripdata.progress.model.TripProgressUpdateValue
+import com.mapbox.navigation.tripdata.speedlimit.api.MapboxSpeedInfoApi
+import com.mapbox.navigation.ui.components.speedlimit.view.MapboxSpeedInfoView
 import com.mapbox.navigation.ui.base.util.MapboxNavigationConsumer
 import com.mapbox.navigation.ui.components.maneuver.model.ManeuverPrimaryOptions
 import com.mapbox.navigation.ui.components.maneuver.model.ManeuverViewOptions
@@ -162,17 +165,6 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
     private val maneuverViewId = 2
     private val maneuverView = createManueverView(maneuverViewId, parentConstraintLayout)
 
-    private val tripProgressViewId = 3
-    private val tripProgressTimeRemainingTextView = createCenteredTextView()
-    private val tripProgressDistanceRemainingTextView = createCenteredTextView()
-    private val tripProgressArrivalTimeTextView = createCenteredTextView()
-    private val tripProgressView = createTripProgressView(
-        id=tripProgressViewId,
-        parent=parentConstraintLayout,
-        tripProgressTimeRemainingTextView=tripProgressTimeRemainingTextView,
-        tripProgressDistanceRemainingTextView=tripProgressDistanceRemainingTextView,
-        tripProgressArrivalTimeTextView=tripProgressArrivalTimeTextView
-    )
 
     private val soundButtonId = 4
     private val soundButton = createSoundButton(soundButtonId, parentConstraintLayout){
@@ -191,20 +183,19 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         navigationCamera.requestNavigationCameraToFollowing()
     }
 
-    private val cancelButtonId = 7
-    private val cancelButton = createCancelButton(cancelButtonId, parentConstraintLayout){
-        onCancelNavigation(mapOf())
-    }
+
+    private val speedLimitViewId = 8
+    private val speedLimitView = createSpeedLimitView(speedLimitViewId, parentConstraintLayout)
 
     private val parentConstraintSet = createAndApplyConstraintSet(
         mapViewId=mapViewId,
         maneuverViewId=maneuverViewId,
-        tripProgressViewId=tripProgressViewId,
         soundButtonId=soundButtonId,
         overviewButtonId=overviewButtonId,
         recenterButtonId=recenterButtonId,
-        cancelButtonId=cancelButtonId,
+        speedLimitViewId = speedLimitViewId,
         constraintLayout=parentConstraintLayout
+        
     )
 
     private val routeLineApiOptions = MapboxRouteLineApiOptions.Builder().build()
@@ -222,6 +213,9 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
     private val routeArrowView = MapboxRouteArrowView(routeArrowOptions)
 
     private val distanceFormatter = DistanceFormatterOptions.Builder(context).build()
+
+    val speedInfoApi = MapboxSpeedInfoApi()
+
     private var maneuverApi = MapboxManeuverApi(MapboxDistanceFormatter(distanceFormatter))
 
     private var tripProgressFormatter = TripProgressUpdateFormatter.Builder(context)
@@ -340,14 +334,6 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
             val maneuvers = maneuverApi.getManeuvers(routeProgress)
             maneuverView.renderManeuvers(maneuvers)
 
-            // Handle trip progress view
-            tripProgressApi.getTripProgress(routeProgress).let { update: TripProgressUpdateValue ->
-                val formatter = update.formatter
-                tripProgressTimeRemainingTextView.text = formatter.getTimeRemaining(update.totalTimeRemaining) 
-                tripProgressDistanceRemainingTextView.text = formatter.getDistanceRemaining(update.distanceRemaining)
-                tripProgressArrivalTimeTextView.text = formatter.getEstimatedTimeToArrival(update.estimatedTimeToArrival)
-            }
-
             val stopDistanceTraveled = routeProgress.currentLegProgress?.distanceTraveled?.toDouble() ?: 0.0
             val stopDurationRemaining = routeProgress.currentLegProgress?.durationRemaining?.toDouble() ?: 0.0
             val stopDistanceRemaining = routeProgress.currentLegProgress?.distanceRemaining?.toDouble() ?: 0.0
@@ -384,6 +370,12 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
             // Update viewport data source
             viewportDataSource.onLocationChanged(enhancedLocation)
             viewportDataSource.evaluate()
+
+            val value = speedInfoApi.updatePostedAndCurrentSpeed(
+                locationMatcherResult,
+                distanceFormatter
+            )
+            value?.let { speedLimitView.render(it) }
 
             val driverLocation = mutableMapOf<String, Double>()
             driverLocation["longitude"] = enhancedLocation.longitude
@@ -470,24 +462,12 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         }
     }
 
-    private fun createTripProgressView(id: Int, parent: ViewGroup, tripProgressTimeRemainingTextView: TextView, tripProgressDistanceRemainingTextView: TextView, tripProgressArrivalTimeTextView: TextView): LinearLayout {
-        return LinearLayout(context).apply {
+    private fun createSpeedLimitView (id: Int, parent: ViewGroup): MapboxSpeedInfoView {
+        return MapboxSpeedInfoView(context).apply {
             setId(id)
+            setBackgroundColor(Color.RED)
+            visibility = View.VISIBLE
             parent.addView(this)
-            setOrientation(LinearLayout.VERTICAL);
-            setBackgroundColor(Color.WHITE)
-            setPadding((5 * PIXEL_DENSITY).toInt(), (5 * PIXEL_DENSITY).toInt(), (5 * PIXEL_DENSITY).toInt(), (5 * PIXEL_DENSITY).toInt())
-
-            addView(tripProgressTimeRemainingTextView, LayoutParams.MATCH_PARENT, (40 * PIXEL_DENSITY).toInt())
-
-            val bottomContainer = LinearLayout(context).apply {
-                setOrientation(LinearLayout.HORIZONTAL);
-                setGravity(Gravity.CENTER)
-                addView(tripProgressDistanceRemainingTextView, (60 * PIXEL_DENSITY).toInt(), (20 * PIXEL_DENSITY).toInt())
-                addView(tripProgressArrivalTimeTextView, (60 * PIXEL_DENSITY).toInt(), (20 * PIXEL_DENSITY).toInt())
-            }
-            
-            addView(bottomContainer, LayoutParams.MATCH_PARENT, (20 * PIXEL_DENSITY).toInt())
         }
     }
 
@@ -525,33 +505,24 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         }
     }
 
-    private fun createCancelButton(id: Int, parent: ViewGroup, onClick: (MapboxSoundButton) -> Unit): MapboxSoundButton {
-        return MapboxSoundButton(context).apply {
-            setId(id)
-            parent.addView(this)
-            findViewById<ImageView>(com.mapbox.navigation.ui.components.R.id.buttonIcon).setImageResource(R.drawable.icon_x)
-            setOnClickListener {
-                onClick(this)
-            }
-        }
-    }
 
     private fun createAndApplyConstraintSet(
         mapViewId: Int, 
         maneuverViewId: Int, 
-        tripProgressViewId: Int,  
         soundButtonId: Int,
         overviewButtonId: Int,
         recenterButtonId: Int,
-        cancelButtonId: Int,
+        speedLimitViewId: Int,
         constraintLayout: ConstraintLayout
     ): ConstraintSet {
         return ConstraintSet().apply{
             // Add MapView constraints
             connect(mapViewId, ConstraintSet.TOP, ConstraintSet.PARENT_ID, ConstraintSet.TOP)
-            connect(mapViewId, ConstraintSet.BOTTOM, tripProgressViewId, ConstraintSet.TOP)
+            connect(mapViewId, ConstraintSet.BOTTOM, ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM)
             connect(mapViewId, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START)
             connect(mapViewId, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END)
+
+            setMargin(mapViewId, ConstraintSet.BOTTOM, (90 * PIXEL_DENSITY).toInt())
 
             // Add ManeuverView constraints
             connect(maneuverViewId, ConstraintSet.TOP, mapViewId, ConstraintSet.TOP, (25 * PIXEL_DENSITY).toInt())
@@ -559,19 +530,12 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
             connect(maneuverViewId, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, (12 * PIXEL_DENSITY).toInt())
             constrainHeight(maneuverViewId, ConstraintSet.WRAP_CONTENT)
 
-            // Add TripProgressView constraints
-            connect(tripProgressViewId, ConstraintSet.BOTTOM, ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM)
-            connect(tripProgressViewId, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START)
-            connect(tripProgressViewId, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END)
-            constrainMinHeight(tripProgressViewId, (80 * PIXEL_DENSITY).toInt())
-            constrainWidth(tripProgressViewId, ConstraintSet.MATCH_CONSTRAINT)
 
             // Add SoundButton constraints
             connect(soundButtonId, ConstraintSet.TOP, maneuverViewId, ConstraintSet.BOTTOM, (8 * PIXEL_DENSITY).toInt())
             connect(soundButtonId, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, (16 * PIXEL_DENSITY).toInt())
             constrainWidth(soundButtonId, ConstraintSet.WRAP_CONTENT)
             constrainHeight(soundButtonId, ConstraintSet.WRAP_CONTENT)
-
 
             // Add OverviewButton constraints
             connect(overviewButtonId, ConstraintSet.TOP, soundButtonId, ConstraintSet.BOTTOM, (8 * PIXEL_DENSITY).toInt())
@@ -585,12 +549,12 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
             constrainWidth(recenterButtonId, ConstraintSet.WRAP_CONTENT)
             constrainHeight(recenterButtonId, ConstraintSet.WRAP_CONTENT)
 
-            // Add CancelButton constraints
-            connect(cancelButtonId, ConstraintSet.BOTTOM, tripProgressViewId, ConstraintSet.BOTTOM)
-            connect(cancelButtonId, ConstraintSet.TOP, tripProgressViewId, ConstraintSet.TOP)
-            connect(cancelButtonId, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, (16 * PIXEL_DENSITY).toInt())
-            constrainWidth(cancelButtonId, ConstraintSet.WRAP_CONTENT)
-            constrainHeight(cancelButtonId, ConstraintSet.WRAP_CONTENT)
+            // Add SpeedLimitView constraints
+            connect(speedLimitViewId, ConstraintSet.TOP, recenterButtonId, ConstraintSet.TOP, (25 * PIXEL_DENSITY).toInt())
+            connect(speedLimitViewId, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START, (12 * PIXEL_DENSITY).toInt())
+            connect(speedLimitViewId, ConstraintSet.BOTTOM, ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM)
+            connect(speedLimitViewId, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, (12 * PIXEL_DENSITY).toInt())
+            constrainHeight(speedLimitViewId, ConstraintSet.WRAP_CONTENT)
 
             applyTo(constraintLayout)
         }
@@ -630,7 +594,6 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         mapboxNavigation?.registerVoiceInstructionsObserver(voiceInstructionsObserver)
         mapboxNavigation?.registerArrivalObserver(arrivalObserver)
         mapboxNavigation?.registerOffRouteObserver(offRouteObserver)
-        mapboxNavigation?.setRerouteEnabled(false)
         mapView.location.addOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener)
         mapView.logo.updateSettings {
             enabled = false
@@ -640,7 +603,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         }
         mapView.compass.enabled = false
         mapView.scalebar.enabled = false
-        mapboxNavigation?.startTripSession()
+        mapboxNavigation?.startTripSession(withForegroundService=false)
     }
 
     override fun onDetachedFromWindow() {
@@ -745,21 +708,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
 			.build()
         tripProgressApi = MapboxTripProgressApi(tripProgressFormatter)
 
-        if(currentMapMatchingRequestId != null){
-            mapboxNavigation?.cancelMapMatchingRequest(currentMapMatchingRequestId!!)
-        }
-
-        if(currentRoutesRequestId != null){
-            mapboxNavigation?.cancelRouteRequest(currentRoutesRequestId!!)
-        }
-
-        if(currentCoordinates != null){
-            if(isUsingRouteMatchingApi){
-                requestMapMatchingRoutes()
-            } else {
-                requestRoutes()
-            }
-        }
+        requestRoutes()
 
         addAnnotationToMap(currentCoordinates ?: emptyList())
     }
@@ -788,8 +737,8 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
             val pointAnnotationOptions: PointAnnotationOptions = PointAnnotationOptions()
                 .withPoint(destination)
                 .withIconImage(it)
-                .withIconSize(1.2)
-                .withIconOffset(listOf(8.0, 2.0))
+                .withIconSize(0.8)
+                .withIconOffset(listOf(10.0, -25.0))
             pointAnnotationManager?.create(pointAnnotationOptions)
         }
 
@@ -799,8 +748,8 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
                 val pointAnnotationOptions = PointAnnotationOptions()
                     .withPoint(waypoint)
                     .withIconImage(bitmap)
-                    .withIconSize(1.2)
-                    .withIconOffset(listOf(8.0, 2.0))
+                    .withIconSize(0.8)
+                    .withIconOffset(listOf(10.0, -25.0))
                 pointAnnotationManager?.create(pointAnnotationOptions)
             }
         }
@@ -834,18 +783,8 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
                                 .steps(true)
                                 .voiceInstructions(true)
                                 .language(currentLocale.toLanguageTag())
-
-        if(currentWaypointIndices != null){
-            optionsBuilder = optionsBuilder.waypointIndicesList(currentWaypointIndices!!)
-        }
-
-        if(currentRouteProfile != null){
-            optionsBuilder = optionsBuilder.profile(currentRouteProfile!!)
-        }
-
-        if(currentRouteExcludeList != null){
-            optionsBuilder = optionsBuilder.excludeList(currentRouteExcludeList!!)
-        }
+                                .profile(DirectionsCriteria.PROFILE_DRIVING_TRAFFIC)
+                                .alternatives(false)
 
         currentRoutesRequestId = mapboxNavigation?.requestRoutes(
                 optionsBuilder.build(),

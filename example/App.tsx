@@ -46,11 +46,7 @@ export default function App() {
           onRouteChanged={(event: any) => {
             const route = JSON.parse(event.nativeEvent.route);
             const directionsRoute = route.directionsRoute;
-          }}
-          onRouteReady={(event: any) => {
-            const route = JSON.parse(event.nativeEvent.route);
-            const directionsRoute = route.directionsRoute;
-            console.log("onRouteReady");
+            console.log("onRouteChanged");
           }}
           onUserOffRoute={(event: any) => {
             console.log(event.nativeEvent);
@@ -60,35 +56,6 @@ export default function App() {
       ) : (
         <Text style={styles.text}>Location required for mapbox navigation</Text>
       )}
-      <View
-        style={{
-          backgroundColor: "#fff",
-          minHeight: "20%",
-          padding: 20,
-          position: "absolute",
-          bottom: 0,
-          width: "100%",
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          elevation: 20,
-        }}
-      >
-        <TouchableOpacity
-          onPress={() => {
-            UpdateRoute();
-          }}
-          style={{
-            backgroundColor: "#dbdbdb",
-            height: 50,
-            borderRadius: 1000,
-            justifyContent: "center",
-            alignContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <Text>Update Route</Text>
-        </TouchableOpacity>
-      </View>
 
       <StatusBar style="dark" />
     </View>
