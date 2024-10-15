@@ -540,7 +540,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
             options.followingFrameOptions.centerUpdatesAllowed= true
             options.followingFrameOptions.bearingUpdatesAllowed = true
             options.followingFrameOptions.bearingSmoothing.enabled = true
-            options.followingFrameOptions.defaultPitch = 65.0
+            options.followingFrameOptions.defaultPitch = 45.0
             options.followingFrameOptions.maxZoom = 18.0
             options.followingFrameOptions.minZoom = 15.0
             options.followingFrameOptions.pitchUpdatesAllowed = true
@@ -572,7 +572,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         }
         mapView.compass.enabled = false
         mapView.scalebar.enabled = false
-        mapboxNavigation?.startTripSession(withForegroundService=false)
+        mapboxNavigation?.startTripSession()
     }
 
     override fun onDetachedFromWindow() {
