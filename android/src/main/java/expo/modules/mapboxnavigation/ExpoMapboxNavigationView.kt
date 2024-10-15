@@ -67,10 +67,6 @@ import com.mapbox.navigation.core.directions.session.RoutesObserver
 import com.mapbox.navigation.core.directions.session.RoutesUpdatedResult
 import com.mapbox.navigation.core.formatter.MapboxDistanceFormatter
 import com.mapbox.navigation.core.lifecycle.MapboxNavigationApp
-import com.mapbox.navigation.core.mapmatching.MapMatchingAPICallback
-import com.mapbox.navigation.core.mapmatching.MapMatchingFailure
-import com.mapbox.navigation.core.mapmatching.MapMatchingOptions
-import com.mapbox.navigation.core.mapmatching.MapMatchingSuccessfulResult
 import com.mapbox.navigation.core.trip.session.LocationMatcherResult
 import com.mapbox.navigation.core.trip.session.LocationObserver
 import com.mapbox.navigation.core.trip.session.OffRouteObserver
@@ -157,7 +153,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
     }
 
     private val maneuverViewId = 2
-    private val maneuverView = createManueverView(maneuverViewId, parentConstraintLayout)
+    private val maneuverView = createManueverView(maneuverViewId, parentConstraintLayout, context)
 
 
     private val soundButtonId = 4
@@ -184,7 +180,6 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         overviewButtonId=overviewButtonId,
         recenterButtonId=recenterButtonId,
         constraintLayout=parentConstraintLayout
-        
     )
 
     private val routeLineApiOptions = MapboxRouteLineApiOptions.Builder().build()
@@ -192,6 +187,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
 
     private val routeLineViewOptions = MapboxRouteLineViewOptions.Builder(context)
         .routeLineBelowLayerId("road-label-navigation")
+        .destinationWaypointIcon(R.drawable.waypoint_icon)
         .build()
     private val routeLineView = MapboxRouteLineView(routeLineViewOptions)
 
@@ -199,6 +195,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
     private val routeArrowOptions = RouteArrowOptions.Builder(context)
         .withAboveLayerId(TOP_LEVEL_ROUTE_LINE_LAYER_ID)
         .build()
+        
     private val routeArrowView = MapboxRouteArrowView(routeArrowOptions)
 
     private val distanceFormatter = DistanceFormatterOptions.Builder(context).build()
@@ -249,15 +246,6 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         }
         override fun onCanceled(routeOptions: RouteOptions, @RouterOrigin routerOrigin: String) {}
         override fun onFailure(reasons: List<RouterFailure>, routeOptions: RouteOptions) {}
-    }
-
-    @com.mapbox.navigation.base.ExperimentalPreviewMapboxNavigationAPI
-    private val mapMatchingRequestCallback = object : MapMatchingAPICallback {
-        override fun success(result: MapMatchingSuccessfulResult) {
-            onRoutesReady(result.navigationRoutes)
-        }
-        override fun onCancel() {}
-        override fun failure(failure: MapMatchingFailure) {}
     }
 
     private val routesObserver = object : RoutesObserver {
@@ -426,18 +414,31 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         }
     }
 
-    private fun createManueverView(id: Int, parent: ViewGroup): MapboxManeuverView {
+    fun createManueverView(id: Int, parent: ViewGroup, context: Context): MapboxManeuverView {
         return MapboxManeuverView(context).apply {
             setId(id)
             parent.addView(this)
+            
+            val backgroundDrawable = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(ContextCompat.getColor(context, R.color.maneuver_view_background))
+                cornerRadius = 17f * context.resources.displayMetrics.density
+            }
+
+            background = backgroundDrawable
+            
+            val padding = (3 * context.resources.displayMetrics.density).toInt()
+            setPadding(padding, padding, padding, padding)
+            
             val maneuverViewOptions = ManeuverViewOptions.Builder()
                 .primaryManeuverOptions(
                     ManeuverPrimaryOptions.Builder()
                         .textAppearance(R.style.ManeuverTextAppearance)
                         .build()
                 )
+                .maneuverBackgroundColor(R.color.maneuver_view_background)
                 .build()
-
+            
             updateManeuverViewOptions(maneuverViewOptions)
         }
     }
@@ -497,7 +498,6 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
             connect(mapViewId, ConstraintSet.BOTTOM, ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM)
             connect(mapViewId, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START)
             connect(mapViewId, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END)
-
             setMargin(mapViewId, ConstraintSet.BOTTOM, (90 * PIXEL_DENSITY).toInt())
 
             // Add ManeuverView constraints
@@ -540,7 +540,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
             options.followingFrameOptions.centerUpdatesAllowed= true
             options.followingFrameOptions.bearingUpdatesAllowed = true
             options.followingFrameOptions.bearingSmoothing.enabled = true
-            options.followingFrameOptions.defaultPitch = 45.0
+            options.followingFrameOptions.defaultPitch = 65.0
             options.followingFrameOptions.maxZoom = 18.0
             options.followingFrameOptions.minZoom = 15.0
             options.followingFrameOptions.pitchUpdatesAllowed = true
@@ -572,7 +572,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         }
         mapView.compass.enabled = false
         mapView.scalebar.enabled = false
-        mapboxNavigation?.startTripSession(withForegroundService=true)
+        mapboxNavigation?.startTripSession(withForegroundService=false)
     }
 
     override fun onDetachedFromWindow() {
@@ -639,79 +639,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
 
         val distanceFormatter = DistanceFormatterOptions.Builder(context).locale(currentLocale).build()
         maneuverApi = MapboxManeuverApi(MapboxDistanceFormatter(distanceFormatter))
-
-        tripProgressFormatter = TripProgressUpdateFormatter.Builder(context)
-			.distanceRemainingFormatter(DistanceRemainingFormatter(distanceFormatter))
-	      	.timeRemainingFormatter(TimeRemainingFormatter(context, currentLocale))
-			.estimatedTimeToArrivalFormatter(EstimatedTimeToArrivalFormatter(context))
-			.build()
-        tripProgressApi = MapboxTripProgressApi(tripProgressFormatter)
-
         requestRoutes()
-
-        addAnnotationToMap(currentCoordinates ?: emptyList())
-    }
-
-    private fun addAnnotationToMap(coords: List<Point>) {
-        // Ensure there are enough coordinates to separate waypoints and destination
-        if (coords.isEmpty() || coords.size < 2) {
-            return
-        }
-        // Extract waypoints (removing index 0) and destination (last coordinate)
-        val waypoints = coords.subList(1, coords.size - 1)
-        val destination = coords.last()
-
-        // Initialize or reuse the PointAnnotationManager
-        if (pointAnnotationManager == null) {
-            val annotationConfig = AnnotationConfig()
-            val annotationApi = mapView.annotations
-            pointAnnotationManager = annotationApi?.createPointAnnotationManager(annotationConfig)
-        }
-
-        // Clear previous annotations
-        pointAnnotationManager?.deleteAll()
-
-        // Add destination annotation
-        destinationBitmapFromDrawableRes()?.let {
-            val pointAnnotationOptions: PointAnnotationOptions = PointAnnotationOptions()
-                .withPoint(destination)
-                .withIconImage(it)
-                .withIconSize(0.8)
-                .withIconOffset(listOf(10.0, -25.0))
-            pointAnnotationManager?.create(pointAnnotationOptions)
-        }
-
-        // Add waypoints annotations
-        //stopsBitmapFromDrawableRes()?.let { bitmap ->
-            //waypoints.forEach { waypoint ->
-                //val pointAnnotationOptions = PointAnnotationOptions()
-                   // .withPoint(waypoint)
-                    //.withIconImage(bitmap)
-                  //  .withIconSize(0.8)
-                  //  .withIconOffset(listOf(10.0, -25.0))
-               // pointAnnotationManager?.create(pointAnnotationOptions)
-           // }
-        //}
-    }
-
-    private fun destinationBitmapFromDrawableRes() = convertDrawableToBitmap(ContextCompat.getDrawable(context, R.drawable.destination_icon))
-    private fun stopsBitmapFromDrawableRes() = convertDrawableToBitmap(ContextCompat.getDrawable(context, R.drawable.waypoint_icon))
-
-    private fun convertDrawableToBitmap(sourceDrawable: Drawable?): Bitmap? {
-        if (sourceDrawable == null) {
-            return null
-        }
-        return if (sourceDrawable is BitmapDrawable) {
-            sourceDrawable.bitmap
-        } else {
-            val constantState = sourceDrawable.constantState ?: return null
-            val drawable = constantState.newDrawable().mutate()
-            val bitmap: Bitmap = Bitmap.createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            drawable.setBounds(0, 0, canvas.width, canvas.height)
-            drawable.draw(canvas)
-            bitmap
-        }
     }
 
     private fun requestRoutes(){
