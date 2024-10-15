@@ -83,8 +83,6 @@ import com.mapbox.navigation.tripdata.progress.model.EstimatedTimeToArrivalForma
 import com.mapbox.navigation.tripdata.progress.model.TimeRemainingFormatter
 import com.mapbox.navigation.tripdata.progress.model.TripProgressUpdateFormatter
 import com.mapbox.navigation.tripdata.progress.model.TripProgressUpdateValue
-import com.mapbox.navigation.tripdata.speedlimit.api.MapboxSpeedInfoApi
-import com.mapbox.navigation.ui.components.speedlimit.view.MapboxSpeedInfoView
 import com.mapbox.navigation.ui.base.util.MapboxNavigationConsumer
 import com.mapbox.navigation.ui.components.maneuver.model.ManeuverPrimaryOptions
 import com.mapbox.navigation.ui.components.maneuver.model.ManeuverViewOptions
@@ -125,17 +123,13 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
     private var isMuted = false
     private var currentCoordinates: List<Point>? = null
     private var currentLocale = Locale.getDefault()
-    private var currentWaypointIndices: List<Int>? = null 
     private var currentRoutesRequestId: Long? = null
-    private var currentMapMatchingRequestId: Long? = null
-    private var isUsingRouteMatchingApi = false
-    private var currentRouteProfile: String? = null
-    private var currentRouteExcludeList: List<String>? = null
     private var currentMapStyle: String? = "mapbox://styles/redafa/clxm5vwgx00h701pd1uvublem"
 
     private val onRouteProgressChanged by EventDispatcher()
     private val onCancelNavigation by EventDispatcher()
     private val onWaypointArrival by EventDispatcher()
+    private val onNextRouteLegStart by EventDispatcher()
     private val onFinalDestinationArrival by EventDispatcher()
     private val onRouteChanged by EventDispatcher()
     private val onUserOffRoute by EventDispatcher()
@@ -183,17 +177,12 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         navigationCamera.requestNavigationCameraToFollowing()
     }
 
-
-    private val speedLimitViewId = 8
-    private val speedLimitView = createSpeedLimitView(speedLimitViewId, parentConstraintLayout)
-
     private val parentConstraintSet = createAndApplyConstraintSet(
         mapViewId=mapViewId,
         maneuverViewId=maneuverViewId,
         soundButtonId=soundButtonId,
         overviewButtonId=overviewButtonId,
         recenterButtonId=recenterButtonId,
-        speedLimitViewId = speedLimitViewId,
         constraintLayout=parentConstraintLayout
         
     )
@@ -214,7 +203,6 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
 
     private val distanceFormatter = DistanceFormatterOptions.Builder(context).build()
 
-    val speedInfoApi = MapboxSpeedInfoApi()
 
     private var maneuverApi = MapboxManeuverApi(MapboxDistanceFormatter(distanceFormatter))
 
@@ -371,11 +359,6 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
             viewportDataSource.onLocationChanged(enhancedLocation)
             viewportDataSource.evaluate()
 
-            val value = speedInfoApi.updatePostedAndCurrentSpeed(
-                locationMatcherResult,
-                distanceFormatter
-            )
-            value?.let { speedLimitView.render(it) }
 
             val driverLocation = mutableMapOf<String, Double>()
             driverLocation["longitude"] = enhancedLocation.longitude
@@ -392,24 +375,27 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
     private val arrivalObserver = object : ArrivalObserver {
         override fun onWaypointArrival(routeProgress: RouteProgress) {
             onWaypointArrival(mapOf(
-                "distanceRemaining" to routeProgress.distanceRemaining,
-                "distanceTraveled" to routeProgress.distanceTraveled,
-                "durationRemaining" to routeProgress.durationRemaining,
-                "fractionTraveled" to routeProgress.fractionTraveled
+                "waypointArrival" to true
             ))
         }
-        override fun onNextRouteLegStart(routeLegProgress: RouteLegProgress) {}
+        override fun onNextRouteLegStart(routeLegProgress: RouteLegProgress) {
+            onNextRouteLegStart(mapOf(
+                "nextRouteLegStart" to true
+            ))
+        }
         override fun onFinalDestinationArrival(routeProgress: RouteProgress) {
-            onFinalDestinationArrival(mapOf())
+            onFinalDestinationArrival(mapOf(
+                "finalDestinationArrival" to true
+            ))
         }
     }
 
     private val offRouteObserver = object : OffRouteObserver {
         override fun onOffRouteStateChanged(offRoute: Boolean) {
             if(offRoute){
-                onUserOffRoute(mapOf(
-                    "offRoute" to offRoute
-                ))
+                //onUserOffRoute(mapOf(
+                    //"offRoute" to offRoute
+                //))
             }
         }
     }
@@ -462,15 +448,6 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         }
     }
 
-    private fun createSpeedLimitView (id: Int, parent: ViewGroup): MapboxSpeedInfoView {
-        return MapboxSpeedInfoView(context).apply {
-            setId(id)
-            setBackgroundColor(Color.RED)
-            visibility = View.VISIBLE
-            parent.addView(this)
-        }
-    }
-
     private fun createSoundButton(id: Int, parent: ViewGroup, onClick: (MapboxSoundButton) -> Unit): MapboxSoundButton {
         return MapboxSoundButton(context).apply {
             setId(id)
@@ -512,7 +489,6 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         soundButtonId: Int,
         overviewButtonId: Int,
         recenterButtonId: Int,
-        speedLimitViewId: Int,
         constraintLayout: ConstraintLayout
     ): ConstraintSet {
         return ConstraintSet().apply{
@@ -549,13 +525,6 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
             constrainWidth(recenterButtonId, ConstraintSet.WRAP_CONTENT)
             constrainHeight(recenterButtonId, ConstraintSet.WRAP_CONTENT)
 
-            // Add SpeedLimitView constraints
-            connect(speedLimitViewId, ConstraintSet.TOP, recenterButtonId, ConstraintSet.TOP, (25 * PIXEL_DENSITY).toInt())
-            connect(speedLimitViewId, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START, (12 * PIXEL_DENSITY).toInt())
-            connect(speedLimitViewId, ConstraintSet.BOTTOM, ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM)
-            connect(speedLimitViewId, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, (12 * PIXEL_DENSITY).toInt())
-            constrainHeight(speedLimitViewId, ConstraintSet.WRAP_CONTENT)
-
             applyTo(constraintLayout)
         }
     }
@@ -572,8 +541,8 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
             options.followingFrameOptions.bearingUpdatesAllowed = true
             options.followingFrameOptions.bearingSmoothing.enabled = true
             options.followingFrameOptions.defaultPitch = 45.0
-            options.followingFrameOptions.maxZoom = 17.0
-            options.followingFrameOptions.minZoom = 14.0
+            options.followingFrameOptions.maxZoom = 18.0
+            options.followingFrameOptions.minZoom = 15.0
             options.followingFrameOptions.pitchUpdatesAllowed = true
             options.followingFrameOptions.zoomUpdatesAllowed = true
             if (context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
@@ -603,7 +572,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         }
         mapView.compass.enabled = false
         mapView.scalebar.enabled = false
-        mapboxNavigation?.startTripSession(withForegroundService=false)
+        mapboxNavigation?.startTripSession(withForegroundService=true)
     }
 
     override fun onDetachedFromWindow() {
@@ -629,7 +598,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         mapboxNavigation?.setNavigationRoutes(routes)
         navigationCamera.requestNavigationCameraToFollowing(
             stateTransitionOptions = NavigationCameraTransitionOptions.Builder()
-                .maxDuration(0) // instant transition
+                .maxDuration(0)
                 .build()
         )
         val gson = Gson()
@@ -649,36 +618,6 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
     @com.mapbox.navigation.base.ExperimentalPreviewMapboxNavigationAPI
     fun setLocale(localeStr: String?){
         currentLocale = if (localeStr == null || localeStr == "default") Locale.getDefault() else Locale.Builder().setLanguageTag(localeStr).build()
-        update()
-    }
-
-    @com.mapbox.navigation.base.ExperimentalPreviewMapboxNavigationAPI
-    fun setWaypointIndices(indices: List<Int>?){
-        currentWaypointIndices = indices
-        update()
-    }
-
-    @com.mapbox.navigation.base.ExperimentalPreviewMapboxNavigationAPI
-    fun setIsUsingRouteMatchingApi(useRouteMatchingApi: Boolean?){
-        isUsingRouteMatchingApi = useRouteMatchingApi ?: false
-        update()
-    }
-
-    @com.mapbox.navigation.base.ExperimentalPreviewMapboxNavigationAPI
-    fun setRouteProfile(profile: String?){
-        currentRouteProfile = profile
-        update()
-    }
-
-    @com.mapbox.navigation.base.ExperimentalPreviewMapboxNavigationAPI
-    fun setRouteExcludeList(excludeList: List<String>?){
-        currentRouteExcludeList = excludeList
-        update()
-    }
-
-    @com.mapbox.navigation.base.ExperimentalPreviewMapboxNavigationAPI
-    fun setMapStyle(style: String?){
-        currentMapStyle = style
         update()
     }
 
@@ -743,16 +682,16 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         }
 
         // Add waypoints annotations
-        stopsBitmapFromDrawableRes()?.let { bitmap ->
-            waypoints.forEach { waypoint ->
-                val pointAnnotationOptions = PointAnnotationOptions()
-                    .withPoint(waypoint)
-                    .withIconImage(bitmap)
-                    .withIconSize(0.8)
-                    .withIconOffset(listOf(10.0, -25.0))
-                pointAnnotationManager?.create(pointAnnotationOptions)
-            }
-        }
+        //stopsBitmapFromDrawableRes()?.let { bitmap ->
+            //waypoints.forEach { waypoint ->
+                //val pointAnnotationOptions = PointAnnotationOptions()
+                   // .withPoint(waypoint)
+                    //.withIconImage(bitmap)
+                  //  .withIconSize(0.8)
+                  //  .withIconOffset(listOf(10.0, -25.0))
+               // pointAnnotationManager?.create(pointAnnotationOptions)
+           // }
+        //}
     }
 
     private fun destinationBitmapFromDrawableRes() = convertDrawableToBitmap(ContextCompat.getDrawable(context, R.drawable.destination_icon))
@@ -775,7 +714,6 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         }
     }
 
-
     private fun requestRoutes(){
         var optionsBuilder = RouteOptions.builder()
                                 .applyDefaultNavigationOptions()
@@ -791,28 +729,4 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
                 routesRequestCallback
             )
     }
-
-    @com.mapbox.navigation.base.ExperimentalPreviewMapboxNavigationAPI
-    private fun requestMapMatchingRoutes(){
-        var optionsBuilder = MapMatchingOptions.Builder()
-                            .coordinates(currentCoordinates!!)
-                            .bannerInstructions(true)
-                            .voiceInstructions(true)
-                            .language(currentLocale.toLanguageTag())
-
-        if(currentWaypointIndices != null){
-            optionsBuilder = optionsBuilder.waypoints(currentWaypointIndices!!)
-        }
-
-        if(currentRouteProfile != null){
-            optionsBuilder = optionsBuilder.profile(currentRouteProfile!!)
-        }
-
-
-        currentMapMatchingRequestId = mapboxNavigation?.requestMapMatching(
-                optionsBuilder.build(),
-                mapMatchingRequestCallback
-            )  
-    }
-
 }

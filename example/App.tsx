@@ -46,11 +46,16 @@ export default function App() {
           onRouteChanged={(event: any) => {
             const route = JSON.parse(event.nativeEvent.route);
             const directionsRoute = route.directionsRoute;
-            console.log("onRouteChanged");
+            console.log("routeChanged");
           }}
-          onUserOffRoute={(event: any) => {
-            console.log(event.nativeEvent);
-            //UpdateRoute();
+          onWaypointArrival={(event: any) => {
+            console.log("waypointArrival", event.nativeEvent);
+          }}
+          onNextRouteLegStart={(event: any) => {
+            console.log("nextRouteLegStart", event.nativeEvent);
+          }}
+          onFinalDestinationArrival={(event: any) => {
+            console.log("finalDestinationArrival", event.nativeEvent);
           }}
         />
       ) : (
