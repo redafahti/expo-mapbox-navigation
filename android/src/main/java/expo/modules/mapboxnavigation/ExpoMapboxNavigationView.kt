@@ -5,6 +5,9 @@ import android.content.res.Configuration
 import android.content.res.Resources
 import androidx.core.content.ContextCompat
 import android.graphics.Color
+import android.view.ViewOutlineProvider
+import android.os.Build
+import androidx.core.view.ViewCompat
 import android.util.Log
 import android.view.Gravity
 import android.view.View;
@@ -74,6 +77,7 @@ import com.mapbox.navigation.core.trip.session.RouteProgressObserver
 import com.mapbox.navigation.core.trip.session.VoiceInstructionsObserver
 import com.mapbox.navigation.tripdata.maneuver.api.MapboxManeuverApi
 import com.mapbox.navigation.tripdata.progress.api.MapboxTripProgressApi
+import com.mapbox.navigation.tripdata.speedlimit.api.MapboxSpeedInfoApi
 import com.mapbox.navigation.tripdata.progress.model.DistanceRemainingFormatter
 import com.mapbox.navigation.tripdata.progress.model.EstimatedTimeToArrivalFormatter
 import com.mapbox.navigation.tripdata.progress.model.TimeRemainingFormatter
@@ -199,7 +203,6 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
     private val routeArrowView = MapboxRouteArrowView(routeArrowOptions)
 
     private val distanceFormatter = DistanceFormatterOptions.Builder(context).build()
-
 
     private var maneuverApi = MapboxManeuverApi(MapboxDistanceFormatter(distanceFormatter))
 
@@ -333,7 +336,15 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         }
     }
 
+    private val speedInfoApi: MapboxSpeedInfoApi by lazy {
+        MapboxSpeedInfoApi()
+    }
+
     private val locationObserver = object : LocationObserver {
+
+        override fun onNewRawLocation(rawLocation: com.mapbox.common.location.Location) {
+        }
+
         override fun onNewLocationMatcherResult(locationMatcherResult: LocationMatcherResult) {
             val enhancedLocation = locationMatcherResult.enhancedLocation
 
@@ -342,22 +353,29 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
                 location = enhancedLocation,
                 keyPoints = locationMatcherResult.keyPoints,
             )
+            
+            val speedLimitInfo = locationMatcherResult.speedLimitInfo
 
-            // Update viewport data source
             viewportDataSource.onLocationChanged(enhancedLocation)
             viewportDataSource.evaluate()
 
-
-            val driverLocation = mutableMapOf<String, Double>()
+            val driverLocation = mutableMapOf<String, Any?>()
             driverLocation["longitude"] = enhancedLocation.longitude
             driverLocation["latitude"] = enhancedLocation.latitude
+            driverLocation["speed"] = enhancedLocation.speed
+            driverLocation["speedAccuracy"] = enhancedLocation.speedAccuracy
 
-            // Send onLocationChange event
+            val speedLimitData = mutableMapOf<String, Any?>()
+            speedLimitData["speed"] = speedLimitInfo?.speed
+            speedLimitData["unit"] = speedLimitInfo?.unit
+            speedLimitData["sign"] = speedLimitInfo?.sign
+
             this@ExpoMapboxNavigationView.onLocationChange(mapOf(
                 "driverLocation" to driverLocation,
+                "speedLimitData" to speedLimitData
             ))
+
         }
-        override fun onNewRawLocation(rawLocation: com.mapbox.common.location.Location) {}
     }
 
     private val arrivalObserver = object : ArrivalObserver {
@@ -437,9 +455,21 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
                         .build()
                 )
                 .maneuverBackgroundColor(R.color.maneuver_view_background)
+                .stepDistanceTextAppearance(R.style.StepDistanceTextAppearance)
+                .turnIconManeuver(R.style.MapboxCustomManeuverTurnIconStyle)
                 .build()
             
             updateManeuverViewOptions(maneuverViewOptions)
+
+            // Add elevation for shadow
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                elevation = 9f * context.resources.displayMetrics.density
+                outlineProvider = ViewOutlineProvider.BACKGROUND
+                clipToOutline = true
+            } else {
+                // For pre-Lollipop devices, use ViewCompat
+                ViewCompat.setElevation(this, 9f * context.resources.displayMetrics.density)
+            }
         }
     }
 
@@ -453,9 +483,23 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         return MapboxSoundButton(context).apply {
             setId(id)
             parent.addView(this)
-            findViewById<ImageView>(com.mapbox.navigation.ui.components.R.id.buttonIcon).setImageResource(R.drawable.icon_sound)
+            val buttonIcon = findViewById<ImageView>(com.mapbox.navigation.ui.components.R.id.buttonIcon).setImageResource(R.drawable.icon_sound)
             setOnClickListener {
                 onClick(this)
+            }
+            // Add elevation for shadow
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                elevation = 4f * context.resources.displayMetrics.density
+                outlineProvider = ViewOutlineProvider.BACKGROUND
+                clipToOutline = true
+            } else {
+                // For pre-Lollipop devices, use ViewCompat
+                ViewCompat.setElevation(this, 4f * context.resources.displayMetrics.density)
+            }
+
+            // Optional: Add a background if the button doesn't have one
+            if (background == null) {
+                setBackgroundResource(R.drawable.button_background)
             }
         }
     }
@@ -468,6 +512,20 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
             setOnClickListener {
                 onClick()
             }
+            // Add elevation for shadow
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                elevation = 4f * context.resources.displayMetrics.density
+                outlineProvider = ViewOutlineProvider.BACKGROUND
+                clipToOutline = true
+            } else {
+                // For pre-Lollipop devices, use ViewCompat
+                ViewCompat.setElevation(this, 4f * context.resources.displayMetrics.density)
+            }
+
+            // Optional: Add a background if the button doesn't have one
+            if (background == null) {
+                setBackgroundResource(R.drawable.button_background)
+            }
         }
     }
 
@@ -479,6 +537,20 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
             setVisibility(View.GONE)
             setOnClickListener {
                 onClick()
+            }
+            // Add elevation for shadow
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                elevation = 4f * context.resources.displayMetrics.density
+                outlineProvider = ViewOutlineProvider.BACKGROUND
+                clipToOutline = true
+            } else {
+                // For pre-Lollipop devices, use ViewCompat
+                ViewCompat.setElevation(this, 4f * context.resources.displayMetrics.density)
+            }
+
+            // Optional: Add a background if the button doesn't have one
+            if (background == null) {
+                setBackgroundResource(R.drawable.button_background)
             }
         }
     }
@@ -650,6 +722,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
                                 .voiceInstructions(true)
                                 .language(currentLocale.toLanguageTag())
                                 .profile(DirectionsCriteria.PROFILE_DRIVING_TRAFFIC)
+                                .annotationsList(listOf(DirectionsCriteria.ANNOTATION_MAXSPEED)) 
                                 .alternatives(false)
 
         currentRoutesRequestId = mapboxNavigation?.requestRoutes(
