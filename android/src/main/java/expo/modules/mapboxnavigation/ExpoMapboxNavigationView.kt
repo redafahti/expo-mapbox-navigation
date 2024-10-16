@@ -124,7 +124,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
     private var currentCoordinates: List<Point>? = null
     private var currentLocale = Locale.getDefault()
     private var currentRoutesRequestId: Long? = null
-    private var currentMapStyle: String? = "mapbox://styles/redafa/clxm5vwgx00h701pd1uvublem"
+    private var currentMapStyle: String? = "mapbox://styles/redafa/cm2c1l0cr00xd01qv6wnn3r4h"
 
     private val onRouteProgressChanged by EventDispatcher()
     private val onCancelNavigation by EventDispatcher()
@@ -416,7 +416,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
             setId(id)
             parent.addView(this)
 
-            mapboxMap.loadStyleUri("mapbox://styles/redafa/clxm5vwgx00h701pd1uvublem") { style: Style ->
+            mapboxMap.loadStyleUri("mapbox://styles/redafa/cm2c1l0cr00xd01qv6wnn3r4h") { style: Style ->
                 mapboxStyle = style
                 routeLineView.initializeLayers(style)
             }
@@ -612,9 +612,9 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
             options.followingFrameOptions.centerUpdatesAllowed= true
             options.followingFrameOptions.bearingUpdatesAllowed = true
             options.followingFrameOptions.bearingSmoothing.enabled = true
-            options.followingFrameOptions.defaultPitch = 45.0
+            options.followingFrameOptions.defaultPitch = 50.0
             options.followingFrameOptions.maxZoom = 18.0
-            options.followingFrameOptions.minZoom = 15.0
+            options.followingFrameOptions.minZoom = 12.0
             options.followingFrameOptions.pitchUpdatesAllowed = true
             options.followingFrameOptions.zoomUpdatesAllowed = true
             if (context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {

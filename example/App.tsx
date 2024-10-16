@@ -39,6 +39,11 @@ export default function App() {
       }
     } else {
       setSpeedLimit(40);
+      if (speedInKph > 40) {
+        setSpeedColor("#FF375E");
+      } else {
+        setSpeedColor("#1f2937");
+      }
     }
   };
 
@@ -79,7 +84,7 @@ export default function App() {
               position: "absolute",
               zIndex: 1000,
               left: 10,
-              top: 155,
+              top: "19%",
               shadowColor: "#444",
               elevation: 15,
               borderRadius: 100,
