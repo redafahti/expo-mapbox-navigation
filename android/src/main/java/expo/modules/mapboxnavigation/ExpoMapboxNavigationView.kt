@@ -124,7 +124,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
     private var currentCoordinates: List<Point>? = null
     private var currentLocale = Locale.getDefault()
     private var currentRoutesRequestId: Long? = null
-    private var currentMapStyle: String? = "mapbox://styles/redafa/cm2c4yezl00sn01peebwjdxj8"
+    private var currentMapStyle: String? = "mapbox://styles/voolt-admin/cm2krrib001c901pifactb1qg"
 
     private val onRouteProgressChanged by EventDispatcher()
     private val onCancelNavigation by EventDispatcher()
@@ -416,7 +416,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
             setId(id)
             parent.addView(this)
 
-            mapboxMap.loadStyleUri("mapbox://styles/redafa/cm2c4yezl00sn01peebwjdxj8") { style: Style ->
+            mapboxMap.loadStyleUri("mapbox://styles/voolt-admin/cm2krrib001c901pifactb1qg") { style: Style ->
                 mapboxStyle = style
                 routeLineView.initializeLayers(style)
             }
