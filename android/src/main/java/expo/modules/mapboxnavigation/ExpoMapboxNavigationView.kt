@@ -59,6 +59,7 @@ import com.mapbox.maps.plugin.annotation.generated.createPointAnnotationManager
 import com.mapbox.maps.plugin.annotation.AnnotationConfig
 import com.mapbox.navigation.base.extensions.applyDefaultNavigationOptions
 import com.mapbox.navigation.base.formatter.DistanceFormatterOptions
+import com.mapbox.navigation.base.formatter.UnitType
 import com.mapbox.navigation.base.route.NavigationRoute
 import com.mapbox.navigation.base.route.NavigationRouterCallback
 import com.mapbox.navigation.base.route.RouterFailure
@@ -125,6 +126,7 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
     private var currentLocale = Locale.getDefault()
     private var currentRoutesRequestId: Long? = null
     private var currentMapStyle: String? = "mapbox://styles/voolt-admin/cm2krrib001c901pifactb1qg"
+    private var distanceUnit: String = DirectionsCriteria.IMPERIAL
 
     private val onRouteProgressChanged by EventDispatcher()
     private val onCancelNavigation by EventDispatcher()
@@ -202,7 +204,8 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
         
     private val routeArrowView = MapboxRouteArrowView(routeArrowOptions)
 
-    private val distanceFormatter = DistanceFormatterOptions.Builder(context).build()
+    val unitType = if (distanceUnit == "imperial") UnitType.IMPERIAL else UnitType.METRIC
+    private val distanceFormatter = DistanceFormatterOptions.Builder(context).unitType(unitType).build()
 
     private var maneuverApi = MapboxManeuverApi(MapboxDistanceFormatter(distanceFormatter))
 
@@ -342,6 +345,8 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
 
     private val locationObserver = object : LocationObserver {
 
+        var firstLocationUpdateReceived = false
+
         override fun onNewRawLocation(rawLocation: com.mapbox.common.location.Location) {
         }
 
@@ -353,6 +358,15 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
                 location = enhancedLocation,
                 keyPoints = locationMatcherResult.keyPoints,
             )
+
+            if (!firstLocationUpdateReceived) {
+                firstLocationUpdateReceived = true
+                navigationCamera.requestNavigationCameraToOverview(
+                stateTransitionOptions = NavigationCameraTransitionOptions.Builder()
+                    .maxDuration(0) // instant transition
+                    .build()
+                )
+            }
             
             val speedLimitInfo = locationMatcherResult.speedLimitInfo
 
@@ -708,8 +722,8 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
                 style.localizeLabels(currentLocale)  
             }
         }
-
-        val distanceFormatter = DistanceFormatterOptions.Builder(context).locale(currentLocale).build()
+        val unitType = if (distanceUnit == "imperial") UnitType.IMPERIAL else UnitType.METRIC
+        val distanceFormatter = DistanceFormatterOptions.Builder(context).locale(currentLocale).unitType(unitType).build()
         maneuverApi = MapboxManeuverApi(MapboxDistanceFormatter(distanceFormatter))
         requestRoutes()
     }
@@ -723,7 +737,10 @@ class ExpoMapboxNavigationView(context: Context, appContext: AppContext) : ExpoV
                                 .language(currentLocale.toLanguageTag())
                                 .profile(DirectionsCriteria.PROFILE_DRIVING_TRAFFIC)
                                 .annotationsList(listOf(DirectionsCriteria.ANNOTATION_MAXSPEED)) 
+                                .roundaboutExits(true)
                                 .alternatives(false)
+                                .overview("full")
+                                .voiceUnits(distanceUnit)
 
         currentRoutesRequestId = mapboxNavigation?.requestRoutes(
                 optionsBuilder.build(),

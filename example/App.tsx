@@ -55,7 +55,7 @@ export default function App() {
             style={{ flex: 1 }}
             coordinates={coordinates}
             onRouteProgressChanged={(event: any) => {
-              //console.log(event.nativeEvent);
+              console.log(event.nativeEvent);
             }}
             onLocationChange={(event: any) => {
               updateLocation(event.nativeEvent);

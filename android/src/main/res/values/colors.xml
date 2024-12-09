@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="maneuver_view_background">#56A8F9</color>
-    <color name="maneuver_view_border">#56A8F9</color>
+    <color name="maneuver_view_background">#484E8F</color>
+    <color name="maneuver_view_border">#484E8F</color>
 </resources>
