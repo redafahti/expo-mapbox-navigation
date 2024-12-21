@@ -5,5 +5,5 @@
     <path android:fillColor="#FFFFFF" android:pathData="M12,2 L20,18 L12,14 L4,18 Z" android:strokeWidth="2" android:strokeColor="#FFFFFF" />
 
     <!-- Blue Inner Arrow -->
-    <path android:fillColor="#3b82f6" android:pathData="M12,4 L18,16 L12,13 L6,16 Z" />
+    <path android:fillColor="#6210CC" android:pathData="M12,4 L18,16 L12,13 L6,16 Z" />
 </vector>

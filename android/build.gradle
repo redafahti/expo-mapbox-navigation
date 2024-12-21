@@ -1,7 +1,7 @@
 apply plugin: 'com.android.library'
 
 group = 'expo.modules.mapboxnavigation'
-version = '0.2.7'
+version = '0.2.10'
 
 def expoModulesCorePlugin = new File(project(":expo-modules-core").projectDir.absolutePath, "ExpoModulesCorePlugin.gradle")
 apply from: expoModulesCorePlugin
@@ -35,7 +35,7 @@ android {
   namespace "expo.modules.mapboxnavigation"
   defaultConfig {
     versionCode 1
-    versionName "0.2.7"
+    versionName "0.2.10"
   }
   lintOptions {
     abortOnError false
